@@ -1,0 +1,37 @@
+/* Content styles injected into pages */
+
+/* Dyslexic font mode */
+body.ra-dyslexic,
+body.ra-dyslexic * {
+  font-family: "OpenDyslexic", "Comic Sans MS", cursive !important;
+  letter-spacing: 0.03em !important;
+  word-spacing: 0.08em !important;
+}
+
+/* Reading ruler */
+.ra-ruler {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: rgba(124, 58, 237, 0.10);
+  border-top: 1px solid rgba(124, 58, 237, 0.18);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.18);
+  pointer-events: none;
+  z-index: 2147483647;
+  transition: top 0.08s ease;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+}
+
+/* Color overlays */
+body.ra-overlay-cream { background: #fdf6e3 !important; }
+body.ra-overlay-rose { background: #fef2f2 !important; }
+body.ra-overlay-blue { background: #eff6ff !important; }
+body.ra-overlay-green { background: #f0fdf4 !important; }
+
+/* Speech highlight */
+.ra-speaking {
+  background: rgba(124, 58, 237, 0.18) !important;
+  border-radius: 3px;
+  transition: background 0.1s;
+}

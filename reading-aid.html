@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阅读障碍辅助</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#fefcf8;--panel-bg:#fff;--text:#1a1a1a;--muted:#888;--accent:#7c3aed;
+    --border:#e8e5e0;--radius:14px;--overlay-bg:transparent;
+  }
+  body{
+    font-family:-apple-system,"SF Pro Display",system-ui,sans-serif;
+    background:var(--bg);color:var(--text);
+    height:100dvh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  }
+
+  .topbar{
+    display:flex;align-items:center;gap:10px;
+    padding:8px 14px;flex-shrink:0;
+    border-bottom:1px solid var(--border);background:var(--panel-bg);
+  }
+  .back{font-size:13px;color:var(--muted);text-decoration:none;white-space:nowrap}
+  .back:hover{color:var(--text)}
+  .book-title{font-size:14px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .book-title.empty{color:#ccc;font-weight:400}
+  .top-btn{
+    flex-shrink:0;padding:5px 12px;border-radius:100px;border:1px solid var(--border);
+    background:#fff;font-size:11px;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;
+  }
+  .top-btn:hover{border-color:#ccc}
+  .top-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .top-btn.danger{background:#ef4444;color:#fff;border-color:#ef4444}
+
+  .layout{flex:1;display:flex;overflow:hidden;position:relative}
+
+  .sidebar{
+    width:200px;flex-shrink:0;border-right:1px solid var(--border);
+    background:#fafaf8;display:flex;flex-direction:column;overflow:hidden;
+    transition:transform .25s ease;
+  }
+  .sidebar.hidden{transform:translateX(-100%);width:0;min-width:0;border:none}
+  .sidebar-header{
+    padding:10px 12px;font-size:11px;font-weight:600;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.04em;
+    border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;
+  }
+  .sidebar-list{flex:1;overflow-y:auto;padding:4px 0}
+  .sidebar-list::-webkit-scrollbar{width:3px}
+  .sidebar-list::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+  .chap-item{
+    display:block;width:100%;text-align:left;padding:7px 12px;
+    border:none;background:transparent;font-size:12px;cursor:pointer;
+    font-family:inherit;color:var(--text);transition:all .12s;
+    border-left:3px solid transparent;line-height:1.4;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .chap-item:hover{background:#f0edff}
+  .chap-item.active{background:#f5f3ff;border-left-color:var(--accent);color:var(--accent);font-weight:600}
+
+  /* Toolbar rows */
+  .toolbar-wrap{flex-shrink:0;background:var(--panel-bg);border-bottom:1px solid var(--border)}
+  .toolbar{
+    display:flex;gap:5px;padding:6px 14px;overflow-x:auto;
+    -webkit-overflow-scrolling:touch;flex-wrap:wrap;
+  }
+  .toolbar::-webkit-scrollbar{display:none}
+  .tool-btn{
+    flex-shrink:0;display:flex;align-items:center;gap:4px;
+    padding:5px 10px;border-radius:100px;border:1px solid var(--border);
+    background:#fff;font-size:11px;color:var(--text);cursor:pointer;
+    transition:all .15s;white-space:nowrap;font-family:inherit;
+  }
+  .tool-btn:hover{border-color:#ccc}
+  .tool-btn.active{background:#f5f3ff;border-color:var(--accent);color:var(--accent)}
+  .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .sep{width:1px;height:20px;background:var(--border);flex-shrink:0;align-self:center;margin:0 4px}
+
+  .sliders{
+    display:flex;gap:12px;padding:6px 14px;overflow-x:auto;font-size:11px;
+  }
+  .sliders::-webkit-scrollbar{display:none}
+  .slider-group{display:flex;flex-direction:column;gap:2px;min-width:70px}
+  .slider-group label{color:var(--muted);font-weight:500}
+  .slider-group input[type=range]{width:100%;accent-color:var(--accent)}
+
+  /* Reader */
+  .reader-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+  .reader{
+    flex:1;overflow-y:auto;padding:24px;position:relative;
+    -webkit-overflow-scrolling:touch;background:var(--overlay-bg);
+  }
+  .reader.focus-mode .text-content p{opacity:.08;transition:opacity .15s}
+  .reader.focus-mode .text-content p.focused{opacity:1}
+  .reader.focus-mode .text-content p.semi{opacity:.35}
+
+  .text-content{
+    max-width:720px;margin:0 auto;
+    font-size:18px;line-height:2.2;letter-spacing:.02em;
+    white-space:pre-wrap;word-break:break-word;font-family:inherit;
+  }
+  .text-content.dyslexic{font-family:"OpenDyslexic","Comic Sans MS",cursive}
+  .text-content p{margin-bottom:8px;min-height:1em;transition:opacity .15s}
+
+  /* Bionic reading */
+  .text-content.bionic b{color:#000}
+
+  /* Ruler */
+  .ruler{
+    position:absolute;left:24px;right:24px;height:44px;
+    background:rgba(124,58,237,.08);border-radius:8px;pointer-events:none;
+    box-shadow:0 0 0 1px rgba(124,58,237,.06);
+    display:none;z-index:1;transition:top .1s ease;
+  }
+  .ruler::before,.ruler::after{
+    content:'';position:absolute;left:0;right:0;height:300px;
+    background:rgba(0,0,0,.32);pointer-events:none;
+  }
+  .ruler::before{bottom:100%}.ruler::after{top:100%}
+
+  /* RSVP overlay */
+  .rsvp-overlay{
+    position:absolute;inset:0;background:#0f0f0f;z-index:30;
+    display:none;flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;
+  }
+  .rsvp-overlay.show{display:flex}
+  .rsvp-word{
+    font-size:clamp(28px,8vw,64px);font-weight:600;text-align:center;
+    padding:20px;line-height:1.2;min-height:1.3em;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .rsvp-word .fixation{color:var(--accent)}
+  .rsvp-controls{
+    position:absolute;bottom:24px;display:flex;gap:10px;align-items:center;
+  }
+  .rsvp-controls button{
+    padding:10px 20px;border-radius:100px;border:1px solid #333;
+    background:#1a1a1a;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;
+  }
+  .rsvp-controls button:hover{background:#333}
+  .rsvp-controls select{
+    background:#1a1a1a;color:#fff;border:1px solid #333;padding:8px 14px;
+    border-radius:100px;font-size:13px;outline:none;font-family:inherit;
+  }
+  .rsvp-close{
+    position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;
+    border:1px solid #333;background:#1a1a1a;color:#fff;font-size:18px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+
+  /* Speed tracker */
+  .speed-tracker{
+    position:fixed;bottom:80px;right:16px;
+    background:rgba(0,0,0,.75);color:#fff;padding:8px 14px;
+    border-radius:100px;font-size:12px;pointer-events:none;
+    opacity:0;transition:opacity .3s;z-index:5;
+  }
+  .speed-tracker.visible{opacity:1}
+
+  /* Drop zone */
+  .drop-overlay{
+    position:absolute;inset:0;background:rgba(124,58,237,.06);
+    border:3px dashed var(--accent);display:none;
+    align-items:center;justify-content:center;font-size:20px;
+    color:var(--accent);z-index:10;pointer-events:none;
+    border-radius:12px;margin:8px;
+  }
+  .drop-overlay.show{display:flex}
+
+  .progress-bar{height:3px;background:#eee;flex-shrink:0}
+  .progress-bar .fill{height:100%;background:var(--accent);transition:width .3s;width:0%}
+  .progress-info{
+    display:flex;justify-content:space-between;
+    padding:4px 24px 8px;font-size:11px;color:#bbb;flex-shrink:0;
+  }
+
+  .toast{
+    position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+    background:#333;color:#fff;font-size:14px;padding:10px 20px;
+    border-radius:100px;opacity:0;transition:opacity .3s;
+    pointer-events:none;z-index:100;
+  }
+  .toast.show{opacity:1}
+
+  .empty-state{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:16px;color:#ccc;padding:40px;
+  }
+  .empty-state .icon{font-size:56px}
+  .empty-state h3{font-size:18px;color:#aaa;font-weight:500}
+  .empty-state .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .empty-btn{
+    padding:14px 28px;border-radius:14px;border:2px dashed #ddd;
+    background:#fff;font-size:15px;cursor:pointer;font-family:inherit;
+    transition:all .15s;display:flex;align-items:center;gap:8px;
+  }
+  .empty-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .hidden-file-input{display:none}
+
+  @media(max-width:700px){
+    .sidebar{position:absolute;top:0;left:0;bottom:0;z-index:20;box-shadow:2px 0 20px rgba(0,0,0,.08)}
+    .sidebar.hidden{transform:translateX(-100%);width:220px;min-width:220px;border-right:1px solid var(--border)}
+    .tool-btn{padding:4px 8px;font-size:10px}
+    .text-content{font-size:16px;line-height:2}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <a href="index.html" class="back">&larr; 返回</a>
+  <span class="book-title empty" id="bookTitle">未加载书籍</span>
+  <button class="top-btn" id="sidebarToggle" onclick="toggleSidebar()" style="display:none">📑 目录</button>
+  <button class="top-btn" onclick="document.getElementById('fileInput').click()">📂 打开</button>
+  <button class="top-btn primary" id="openDemoBtn" onclick="loadDemo()">📖 示例</button>
+  <input type="file" class="hidden-file-input" id="fileInput" accept=".txt,.epub" onchange="handleFile(event)">
+</div>
+
+<div class="layout">
+  <div class="sidebar hidden" id="sidebar">
+    <div class="sidebar-header">目录<button onclick="toggleSidebar()" style="border:none;background:none;cursor:pointer;font-size:16px;color:var(--muted)">×</button></div>
+    <div class="sidebar-list" id="chapterList"></div>
+  </div>
+
+  <div class="reader-wrap">
+    <div class="toolbar-wrap">
+      <div class="toolbar" id="toolbar" style="display:none">
+        <!-- Attention tools -->
+        <button class="tool-btn" id="rulerBtn" onclick="toggleRuler()">📏 标尺</button>
+        <button class="tool-btn" id="focusBtn" onclick="toggleLineFocus()">🎯 行聚焦</button>
+        <button class="tool-btn" id="rsvpBtn" onclick="startRSVP()">⚡ 速读</button>
+        <span class="sep"></span>
+        <!-- Font & layout -->
+        <button class="tool-btn" id="dyslexicBtn" onclick="toggleDyslexic()">🔤 字体</button>
+        <button class="tool-btn" id="bionicBtn" onclick="toggleBionic()">🧠 仿生阅读</button>
+        <span class="sep"></span>
+        <!-- Speech -->
+        <button class="tool-btn" id="speakBtn" onclick="speakSelection()">🔊 朗读</button>
+        <button class="tool-btn" id="stopBtn" onclick="stopSpeech()" style="display:none">⏹ 停止</button>
+        <span class="sep"></span>
+        <!-- Color overlays -->
+        <button class="tool-btn" onclick="setOverlay('')" id="overlayNone"><span class="dot" style="background:#fff;border:1px solid #ddd;"></span>原色</button>
+        <button class="tool-btn" onclick="setOverlay('cream')" id="overlayCream"><span class="dot" style="background:#fdf6e3;"></span>暖米</button>
+        <button class="tool-btn" onclick="setOverlay('rose')" id="overlayRose"><span class="dot" style="background:#fef2f2;"></span>淡玫</button>
+        <button class="tool-btn" onclick="setOverlay('blue')" id="overlayBlue"><span class="dot" style="background:#eff6ff;"></span>浅蓝</button>
+        <button class="tool-btn" onclick="setOverlay('green')" id="overlayGreen"><span class="dot" style="background:#f0fdf4;"></span>柔绿</button>
+        <button class="tool-btn" id="overlayCustom" onclick="pickCustomColor()"><span class="dot" style="background:linear-gradient(135deg,red,yellow,lime,cyan,blue,magenta,red);"></span>自定义</button>
+        <span class="sep"></span>
+        <!-- Focus mode -->
+        <button class="tool-btn" id="fullFocusBtn" onclick="toggleFullFocus()">🧘 专注模式</button>
+        <button class="tool-btn" id="speedTrackerBtn" onclick="toggleSpeedTracker()">⏱ 测速</button>
+      </div>
+      <div class="sliders" id="sliders" style="display:none">
+        <div class="slider-group"><label>字号 <span id="sizeVal">18</span></label><input type="range" min="14" max="40" value="18" id="sizeSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>行距 <span id="lineVal">2.2</span></label><input type="range" min="1.4" max="3.5" step="0.1" value="2.2" id="lineSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>字距 <span id="letterVal">.02</span></label><input type="range" min="0" max="0.2" step="0.01" value="0.02" id="letterSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>词距 <span id="wordVal">0</span></label><input type="range" min="0" max="0.5" step="0.02" value="0" id="wordSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>段距 <span id="paraVal">8</span></label><input type="range" min="0" max="40" value="8" id="paraSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>栏宽 <span id="colVal">720</span></label><input type="range" min="320" max="900" step="10" value="720" id="colSlider" oninput="updateFont()"></div>
+        <div class="slider-group"><label>行聚焦 <span id="focusLinesVal">3</span>行</label><input type="range" min="1" max="10" value="3" id="focusLinesSlider" oninput="updateFocusLines()"></div>
+      </div>
+    </div>
+
+    <div class="reader" id="reader"
+      onmousemove="moveRuler(event)"
+      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="ruler" id="ruler"></div>
+      <div class="drop-overlay" id="dropOverlay">📂 松开以导入书籍</div>
+
+      <!-- RSVP mode -->
+      <div class="rsvp-overlay" id="rsvpOverlay">
+        <button class="rsvp-close" onclick="stopRSVP()">×</button>
+        <div class="rsvp-word" id="rsvpWord"></div>
+        <div class="rsvp-controls">
+          <button onclick="toggleRSVPPause()" id="rsvpPauseBtn">⏯</button>
+          <select id="rsvpSpeed" onchange="updateRSVPSpeed()">
+            <option value="150">150 WPM</option>
+            <option value="200">200 WPM</option>
+            <option value="250" selected>250 WPM</option>
+            <option value="300">300 WPM</option>
+            <option value="400">400 WPM</option>
+            <option value="500">500 WPM</option>
+            <option value="700">700 WPM</option>
+          </select>
+          <button onclick="stopRSVP()">退出</button>
+        </div>
+      </div>
+
+      <!-- Speed tracker -->
+      <div class="speed-tracker" id="speedTracker"></div>
+
+      <!-- Empty state -->
+      <div class="empty-state" id="emptyState">
+        <div class="icon">📖</div>
+        <h3>打开一本书开始阅读</h3>
+        <div class="actions">
+          <button class="empty-btn" onclick="document.getElementById('fileInput').click()">📂 打开 TXT / EPUB</button>
+          <button class="empty-btn" onclick="loadDemo()">📖 加载示例</button>
+        </div>
+        <p style="font-size:12px;color:#ddd;margin-top:8px">或拖拽文件到此处</p>
+      </div>
+
+      <div class="text-content" id="textContent" style="display:none"></div>
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display:none"><div class="fill" id="progressFill"></div></div>
+    <div class="progress-info" id="progressInfo" style="display:none"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+// === Font loading ===
+document.head.appendChild(Object.assign(document.createElement('style'),{textContent:`
+  @font-face{font-family:'OpenDyslexic';src:url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/otf/OpenDyslexic-Regular.otf') format('opentype');font-weight:normal}
+  @font-face{font-family:'OpenDyslexic';src:url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/otf/OpenDyslexic-Bold.otf') format('opentype');font-weight:bold}
+`}));
+
+// === State ===
+let chapters=[],currentChapter=0,bookName='';
+let rulerOn=false,dyslexicOn=false,bionicOn=false,lineFocusOn=false;
+let focusLinesN=3,fullFocusOn=false,speedTrackerOn=false;
+let rsvpTimer=null,rsvpPaused=false,rsvpWords=[],rsvpIdx=0;
+let readStartTime=0,wordsRead=0;
+
+// === File handling ===
+async function handleFile(e){
+  const f=e.target.files[0];if(!f)return;
+  bookName=f.name.replace(/\.(txt|epub)$/i,'');
+  if(f.name.endsWith('.epub'))await loadEpub(f);else await loadTxt(f);
+  fileInput.value='';
+}
+async function loadTxt(f){parseChapters(await f.text());showReader();showToast(`已加载: ${bookName}`)}
+async function loadEpub(f){
+  try{
+    const zip=await JSZip.loadAsync(f);
+    const cf=zip.file('META-INF/container.xml');if(!cf)throw new Error('无效 EPUB');
+    const cxml=await cf.async('text');
+    const m=cxml.match(/full-path="([^"]+)"/);if(!m)throw new Error('无法解析');
+    const opfPath=m[1],base=opfPath.substring(0,opfPath.lastIndexOf('/')+1);
+    const oxml=await zip.file(opfPath).async('text');
+    const p=new DOMParser(),odoc=p.parseFromString(oxml,'text/xml');
+    const tel=odoc.querySelector('title');if(tel)bookName=tel.textContent.trim();
+    const spine=[...odoc.querySelectorAll('spine itemref')].map(e=>e.getAttribute('idref'));
+    const manifest={};odoc.querySelectorAll('manifest item').forEach(it=>manifest[it.getAttribute('id')]=it.getAttribute('href'));
+    let txt='';
+    for(const id of spine){
+      const href=manifest[id];if(!href)continue;
+      const fe=zip.file(base+href);if(!fe)continue;
+      const html=await fe.async('text');
+      const doc=p.parseFromString(html,'text/html');
+      txt+=doc.body.textContent+'\n\n';
+    }
+    if(!txt.trim())throw new Error('无文字内容');
+    parseChapters(txt.trim());showReader();showToast(`已加载: ${bookName}`);
+  }catch(err){showToast('EPUB 解析失败: '+err.message);console.error(err)}
+}
+
+// === Chapter parsing ===
+function parseChapters(text){
+  chapters=[];let positions=[];
+  const pats=[
+    /(第[零一二三四五六七八九十百千万\d]+[章节回部篇卷集])[ \t]*[：:：\s]*(.+)/g,
+    /(Chapter\s+\d+)/gi,/(\d+[\.、．]\s*.+)/g,
+    /(第[零一二三四五六七八九十百千万\d]+[章节回部篇卷集])/g,
+  ];
+  for(const pt of pats){
+    let m;const re=new RegExp(pt.source,pt.flags.includes('g')?pt.flags:pt.flags+'g');
+    while((m=re.exec(text))!==null)positions.push({index:m.index,title:m[0].trim()});
+  }
+  positions.sort((a,b)=>a.index-b.index);
+  positions=positions.filter((p,i)=>i===0||p.index-positions[i-1].index>5);
+  if(!positions.length){
+    const parts=text.split(/\n{3,}/);
+    if(parts.length>1)parts.forEach((pt,i)=>{const t=pt.trim();if(t)chapters.push({title:t.split('\n')[0].substring(0,30),content:t})});
+    else chapters.push({title:bookName||'全文',content:text});
+  }else{
+    for(let i=0;i<positions.length;i++){
+      const s=positions[i].index,e=i+1<positions.length?positions[i+1].index:text.length;
+      chapters.push({title:positions[i].title,content:text.substring(s,e).trim()});
+    }
+    if(positions[0].index>0){const pre=text.substring(0,positions[0].index).trim();if(pre.length>50)chapters.unshift({title:'前言/简介',content:pre})}
+  }
+  saveProgress();renderChapters();currentChapter=0;renderContent();
+}
+
+// === LocalStorage ===
+function saveProgress(){
+  try{localStorage.setItem('reading_aid_book',JSON.stringify({name:bookName,chapters:chapters.map(c=>({title:c.title,content:c.content})),currentChapter}))}catch(e){}
+}
+function loadProgress(){
+  try{
+    const d=JSON.parse(localStorage.getItem('reading_aid_book'));
+    if(d&&d.chapters&&d.chapters.length){bookName=d.name||'';chapters=d.chapters;currentChapter=d.currentChapter||0;return true}
+  }catch(e){}
+  return false;
+}
+
+// === UI ===
+function showReader(){
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('textContent').style.display='';
+  document.getElementById('toolbar').style.display='';
+  document.getElementById('sliders').style.display='';
+  document.getElementById('progressBar').style.display='';
+  document.getElementById('progressInfo').style.display='';
+  document.getElementById('sidebarToggle').style.display='';
+  document.getElementById('openDemoBtn').style.display='none';
+  document.getElementById('bookTitle').textContent=bookName||'未命名';
+  document.getElementById('bookTitle').classList.remove('empty');
+  document.getElementById('overlayNone').classList.add('active');
+  updateFont();
+}
+function renderChapters(){
+  const l=document.getElementById('chapterList');
+  if(chapters.length<=1)l.innerHTML='<div style="padding:10px 12px;font-size:12px;color:#ccc">（无章节划分）</div>';
+  else l.innerHTML=chapters.map((c,i)=>`<button class="chap-item${i===currentChapter?' active':''}" onclick="goToChapter(${i})"><span style="color:var(--muted);font-size:10px;margin-right:4px">${i+1}.</span>${c.title}</button>`).join('');
+}
+function renderContent(){
+  if(!chapters.length)return;
+  const content=document.getElementById('textContent');
+  content.innerHTML=chapters[currentChapter].content.split(/\n+/).filter(p=>p.trim()).map(p=>`<p>${p.trim()}</p>`).join('');
+  document.getElementById('reader').scrollTop=0;
+  if(bionicOn)applyBionic();
+  if(lineFocusOn)applyLineFocus();
+  updateProgress();renderChapters();
+}
+function goToChapter(i){currentChapter=i;renderContent();saveProgress();if(window.innerWidth<700)toggleSidebar();document.getElementById('reader').scrollTop=0}
+function updateProgress(){
+  if(!chapters.length)return;
+  const reader=document.getElementById('reader'),fill=document.getElementById('progressFill'),info=document.getElementById('progressInfo');
+  reader.onscroll=()=>{
+    const scrollable=reader.scrollHeight-reader.clientHeight;
+    const pct=scrollable>0?Math.round((reader.scrollTop/scrollable)*100):0;
+    fill.style.width=pct+'%';info.textContent=`${bookName} — 第${currentChapter+1}/${chapters.length}章 · ${pct}%`;
+    if(lineFocusOn)applyLineFocus();
+  };
+  reader.onscroll();
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('hidden')}
+
+// === Ruler ===
+function toggleRuler(){
+  rulerOn=!rulerOn;
+  document.getElementById('rulerBtn').classList.toggle('active',rulerOn);
+  document.getElementById('ruler').style.display=rulerOn?'block':'none';
+  showToast(rulerOn?'阅读标尺已开启':'阅读标尺已关闭');
+}
+function moveRuler(e){
+  if(!rulerOn)return;
+  const reader=document.getElementById('reader'),ruler=document.getElementById('ruler');
+  const rect=reader.getBoundingClientRect();
+  const clientY=e.touches?e.touches[0].clientY:e.clientY;
+  ruler.style.top=(clientY-rect.top+reader.scrollTop-22)+'px';
+}
+
+// === Line Focus (Spotlight) ===
+function toggleLineFocus(){
+  lineFocusOn=!lineFocusOn;
+  document.getElementById('focusBtn').classList.toggle('active',lineFocusOn);
+  document.getElementById('reader').classList.toggle('focus-mode',lineFocusOn);
+  if(lineFocusOn)applyLineFocus();
+  else{
+    document.querySelectorAll('#textContent p').forEach(p=>{p.classList.remove('focused','semi')});
+  }
+  showToast(lineFocusOn?`仅高亮当前 ${focusLinesN} 行`:'行聚焦已关闭');
+}
+function updateFocusLines(){
+  focusLinesN=parseInt(document.getElementById('focusLinesSlider').value);
+  document.getElementById('focusLinesVal').textContent=focusLinesN;
+  if(lineFocusOn)applyLineFocus();
+}
+function applyLineFocus(){
+  if(!lineFocusOn)return;
+  const reader=document.getElementById('reader'),paras=document.querySelectorAll('#textContent p');
+  const rect=reader.getBoundingClientRect();
+  const centerY=rect.top+rect.height/2;
+  let closest=null,closestDist=Infinity;
+  paras.forEach(p=>{
+    const pr=p.getBoundingClientRect();
+    const dist=Math.abs(pr.top+pr.height/2-centerY);
+    if(dist<closestDist){closestDist=dist;closest=p;}
+  });
+  if(!closest)return;
+  const allParas=[...paras];
+  const idx=allParas.indexOf(closest);
+  const half=Math.floor(focusLinesN/2);
+  allParas.forEach((p,i)=>{
+    p.classList.remove('focused','semi');
+    if(i>=idx-half&&i<=idx+half){p.classList.add('focused')}
+    else if(i>=idx-half-1&&i<=idx+half+1){p.classList.add('semi')}
+  });
+}
+
+// === Bionic Reading ===
+function toggleBionic(){
+  bionicOn=!bionicOn;
+  document.getElementById('bionicBtn').classList.toggle('active',bionicOn);
+  if(bionicOn)applyBionic();
+  else removeBionic();
+  showToast(bionicOn?'仿生阅读已开启 — 每个词前半部分加粗':'仿生阅读已关闭');
+}
+function applyBionic(){
+  const content=document.getElementById('textContent');
+  content.classList.add('bionic');
+  content.querySelectorAll('p').forEach(p=>{
+    if(p.dataset.bionic)return;
+    p.dataset.bionic='1';
+    p.innerHTML=p.textContent.split(/(\s+)/).map(token=>{
+      if(/^\s+$/.test(token)||!token.trim())return token;
+      const len=token.length,split=Math.ceil(len*0.5);
+      return `<b>${token.slice(0,split)}</b>${token.slice(split)}`;
+    }).join('');
+  });
+}
+function removeBionic(){
+  const content=document.getElementById('textContent');
+  content.classList.remove('bionic');
+  content.querySelectorAll('p').forEach(p=>{
+    if(p.dataset.bionic){p.innerHTML=p.textContent;delete p.dataset.bionic}
+  });
+}
+
+// === RSVP (Rapid Serial Visual Presentation) ===
+function startRSVP(){
+  const content=document.getElementById('textContent');
+  const fullText=content.textContent.trim();
+  if(!fullText){showToast('请先加载文本');return}
+  rsvpWords=fullText.split(/\s+/).filter(w=>w.length);
+  if(!rsvpWords.length)return;
+  rsvpIdx=0;
+  document.getElementById('rsvpOverlay').classList.add('show');
+  document.getElementById('rsvpBtn').classList.add('active');
+  showRSVPWord();
+  updateRSVPSpeed();
+}
+function showRSVPWord(){
+  if(rsvpIdx>=rsvpWords.length){stopRSVP();showToast('速读完成');return}
+  const word=rsvpWords[rsvpIdx];
+  const el=document.getElementById('rsvpWord');
+  const len=word.length,split=Math.ceil(len*0.45);
+  el.innerHTML=`<span class="fixation">${word.slice(0,split)}</span>${word.slice(split)}`;
+  wordsRead++;
+  updateSpeedTracker();
+}
+function updateRSVPSpeed(){
+  if(rsvpTimer)clearInterval(rsvpTimer);
+  const wpm=parseInt(document.getElementById('rsvpSpeed').value);
+  const msPerWord=60000/wpm;
+  rsvpTimer=setInterval(()=>{
+    if(!rsvpPaused){rsvpIdx++;showRSVPWord()}
+  },msPerWord);
+}
+function toggleRSVPPause(){
+  rsvpPaused=!rsvpPaused;
+  document.getElementById('rsvpPauseBtn').textContent=rsvpPaused?'▶':'⏯';
+}
+function stopRSVP(){
+  if(rsvpTimer)clearInterval(rsvpTimer);
+  rsvpTimer=null;rsvpPaused=false;
+  document.getElementById('rsvpOverlay').classList.remove('show');
+  document.getElementById('rsvpBtn').classList.remove('active');
+}
+
+// === Speed tracker ===
+function toggleSpeedTracker(){
+  speedTrackerOn=!speedTrackerOn;
+  document.getElementById('speedTrackerBtn').classList.toggle('active',speedTrackerOn);
+  if(speedTrackerOn){readStartTime=Date.now();wordsRead=0;updateSpeedTracker()}
+  else{document.getElementById('speedTracker').classList.remove('visible')}
+  showToast(speedTrackerOn?'阅读测速已开启':'阅读测速已关闭');
+}
+function updateSpeedTracker(){
+  if(!speedTrackerOn)return;
+  const el=document.getElementById('speedTracker'),elapsed=(Date.now()-readStartTime)/60000;
+  el.classList.add('visible');
+  if(elapsed<0.05){el.textContent='⏱ ...';return}
+  const wpm=Math.round(wordsRead/elapsed);
+  el.textContent=`⏱ ${wpm} WPM · ${wordsRead} 词`;
+}
+
+// === Dyslexic ===
+function toggleDyslexic(){
+  dyslexicOn=!dyslexicOn;
+  document.getElementById('dyslexicBtn').classList.toggle('active',dyslexicOn);
+  document.getElementById('textContent').classList.toggle('dyslexic',dyslexicOn);
+  showToast(dyslexicOn?'已切换阅读障碍友好字体':'已恢复默认字体');
+}
+
+// === Font ===
+function updateFont(){
+  const c=document.getElementById('textContent');
+  const sz=document.getElementById('sizeSlider').value,lh=document.getElementById('lineSlider').value;
+  const ls=document.getElementById('letterSlider').value,ws=document.getElementById('wordSlider').value;
+  const ps=document.getElementById('paraSlider').value,cw=document.getElementById('colSlider').value;
+  c.style.fontSize=sz+'px';c.style.lineHeight=lh;c.style.letterSpacing=ls+'em';
+  c.style.wordSpacing=ws+'em';c.style.maxWidth=cw+'px';
+  document.querySelectorAll('#textContent p').forEach(p=>p.style.marginBottom=ps+'px');
+  document.getElementById('sizeVal').textContent=sz;
+  document.getElementById('lineVal').textContent=lh;
+  document.getElementById('letterVal').textContent=ls;
+  document.getElementById('wordVal').textContent=ws;
+  document.getElementById('paraVal').textContent=ps;
+  document.getElementById('colVal').textContent=cw;
+  document.getElementById('ruler').style.height=(sz*lh)+'px';
+}
+
+// === Color overlay ===
+function setOverlay(name){
+  const reader=document.getElementById('reader');
+  reader.style.setProperty('--overlay-bg',name?{
+    cream:'#fdf6e3',rose:'#fef2f2',blue:'#eff6ff',green:'#f0fdf4'
+  }[name]||'transparent':'transparent');
+  document.querySelectorAll('[id^="overlay"]').forEach(b=>b.classList.remove('active'));
+  const cap=name?name.charAt(0).toUpperCase()+name.slice(1):'None';
+  document.getElementById('overlay'+cap).classList.add('active');
+}
+
+function pickCustomColor(){
+  const input=document.createElement('input');
+  input.type='color';input.value='#fdf6e3';
+  input.onchange=()=>{
+    document.getElementById('reader').style.setProperty('--overlay-bg',input.value);
+    document.querySelectorAll('[id^="overlay"]').forEach(b=>b.classList.remove('active'));
+    document.getElementById('overlayCustom').classList.add('active');
+  };
+  input.click();
+}
+
+// === Full focus mode ===
+function toggleFullFocus(){
+  fullFocusOn=!fullFocusOn;
+  document.getElementById('fullFocusBtn').classList.toggle('active',fullFocusOn);
+  const els=[document.getElementById('topbar'),document.querySelector('.sidebar'),
+    document.querySelector('.toolbar-wrap'),document.getElementById('progressBar'),
+    document.getElementById('progressInfo')];
+  els.forEach(el=>{if(el)el.style.display=fullFocusOn?'none':''});
+  document.getElementById('reader').style.padding=fullFocusOn?'40px':'24px';
+  showToast(fullFocusOn?'专注模式已开启 — 所有干扰已隐藏':'专注模式已关闭');
+}
+
+// === TTS ===
+let speaking=false;
+function speakSelection(){
+  const sel=window.getSelection().toString();
+  if(sel){speakText(sel);return}
+  const fullText=document.getElementById('textContent').textContent;
+  if(fullText.trim())speakText(fullText);
+}
+function speakText(text){
+  speechSynthesis.cancel();
+  const utt=new SpeechSynthesisUtterance(text);
+  utt.lang='zh-CN';utt.rate=0.85;
+  utt.onstart=()=>{speaking=true;document.getElementById('speakBtn').style.display='none';document.getElementById('stopBtn').style.display=''};
+  utt.onend=utt.onerror=()=>{speaking=false;document.getElementById('speakBtn').style.display='';document.getElementById('stopBtn').style.display='none'};
+  speechSynthesis.speak(utt);
+}
+function stopSpeech(){speechSynthesis.cancel()}
+
+// === Drag & drop ===
+function onDragOver(e){e.preventDefault();document.getElementById('dropOverlay').classList.add('show')}
+function onDragLeave(e){document.getElementById('dropOverlay').classList.remove('show')}
+async function onDrop(e){
+  e.preventDefault();document.getElementById('dropOverlay').classList.remove('show');
+  const f=e.dataTransfer.files[0];if(!f)return;
+  bookName=f.name.replace(/\.(txt|epub)$/i,'');
+  if(f.name.endsWith('.epub'))await loadEpub(f);else await loadTxt(f);
+}
+
+// === Demo ===
+const demoText=`前言
+
+这不仅仅是一本关于阅读的书。这是一本关于大脑、关于我们如何看待文字、关于科技如何改变生活的书。
+
+第一章 阅读的迷宫
+
+春天的早晨，阳光透过窗户洒在书桌上。小鸟在窗外叽叽喳喳地叫着，空气中飘着淡淡的花香。
+
+我打开一本书，文字在纸上安静地排列着。对大多数人来说，阅读是自然而然的事情。但对我而言，每一个字母都在纸面上跳跃、旋转、变形。
+
+有时候，阅读对我来说并不容易——字母会跳动，行与行之间会混淆。但我找到了自己的节奏。
+
+深呼吸，放慢速度，一行一行来。阅读不是比赛，是一次和自己的对话。
+
+第二章 被遗忘的百分之十
+
+全球有超过 10% 的人口经历着某种形式的阅读障碍。这意味着，在你认识的人中，每十个就有一个。
+
+但他们往往不会说出来。因为在这个以文字为基础的社会里，承认自己"读不好"需要巨大的勇气。
+
+他们中的许多人，拥有超乎常人的创造力、空间想象力、或者人际交往能力。他们只是以不同的方式处理文字。
+
+第三章 科技应该做什么
+
+科技应该帮助每一个人，而不是制造更多的障碍。
+
+当我们设计工具时，需要记住：阅读障碍者同样渴望知识、故事和连接。他们只是需要一些小小的辅助。
+
+比如一个阅读标尺——它高亮当前行，遮住上下行，让你不再跳行。
+
+比如一个特殊的字体——它的字母底部更重，让文字在大脑中更稳定。
+
+比如一个仿生阅读模式——每个词的前半部分自动加粗，你的大脑会自然地在注视点之间跳跃，不再需要逐字扫描。
+
+比如一个速读模式——文字在固定位置逐词闪现，眼睛完全不需要移动。对 ADHD 来说，这是革命性的体验。
+
+比如一个行聚焦模式——只显示你正在读的那几行，其余全部淡出。这让注意力无处可逃。
+
+比如一个朗读按钮——当你读累了，让机器帮你读出来。视觉和听觉双通道输入，理解效果加倍。
+
+第四章 你并不孤单
+
+如果你正在使用这个工具，我想告诉你：你并不孤单。
+
+世界上有数亿人和你一样。我们只是以不同的方式感知这个世界。
+
+而这个不同的方式，也许正是我们的超能力。
+
+（全书完）`;
+
+function loadDemo(){bookName='阅读与大脑';parseChapters(demoText);showReader();showToast('已加载示例书籍')}
+
+// === Init ===
+if(loadProgress()){showReader();renderChapters();renderContent();updateFont()}
+document.getElementById('reader').addEventListener('touchmove',moveRuler,{passive:true});
+// Track words read in normal mode
+document.getElementById('reader').addEventListener('scroll',()=>{if(speedTrackerOn&&!rsvpTimer){wordsRead=Math.max(wordsRead,document.getElementById('textContent').textContent.split(/\s+/).filter(w=>w.length).length);updateSpeedTracker()}});
+
+// === Toast ===
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+</script>
+</body>
+</html>

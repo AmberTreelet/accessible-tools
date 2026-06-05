@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "阅读障碍辅助 - Reading Aid",
+  "version": "1.0",
+  "description": "阅读标尺 + 特殊字体 + 文字朗读。为阅读障碍、ADHD 群体设计的网页阅读辅助工具。",
+  "icons": {
+    "128": "icons/icon.svg"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "阅读障碍辅助"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["fonts/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

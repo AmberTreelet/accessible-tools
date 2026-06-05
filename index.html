@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>无障碍工具集 · Accessible Tools — 语音转文字 | 阅读辅助 | AAC沟通板</title>
+<meta name="description" content="三个纯前端无障碍公益工具：语音转文字大字幕、阅读障碍辅助（仿生阅读/RSVP速读/颜色遮罩）、AAC图片沟通板。开源免费，隐私安全，无需注册。帮助听障、阅读障碍、失语症、自闭症、渐冻症人群。">
+<meta name="keywords" content="无障碍,accessibility,阅读障碍,dyslexia,ADHD,听障,deaf,失语症,自闭症,渐冻症,ALS,AAC,沟通板,语音转文字,仿生阅读,速读,辅助技术,开源,公益工具">
+<meta property="og:title" content="无障碍工具集 — 三个纯前端无障碍公益工具">
+<meta property="og:description" content="语音转文字大字幕 · 阅读障碍辅助 · AAC 沟通板。帮助 4.3 亿听障者、10% 阅读障碍人口更方便地交流。">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="无障碍工具集 · Accessible Tools">
+<meta name="twitter:description" content="语音转文字 | 仿生阅读 | AAC沟通板 — 三个纯前端无障碍公益工具。开源免费。">
+<meta name="robots" content="index, follow">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --text:#1a1a1a;--muted:#6b7280;--bg:#faf9f6;
+    --card:#fff;--border:#e8e5e0;
+    --blue:#2563eb;--purple:#7c3aed;--green:#059669;
+    --blue-bg:#eff6ff;--purple-bg:#f5f3ff;--green-bg:#ecfdf5;
+  }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif;
+    background:var(--bg);color:var(--text);
+    -webkit-font-smoothing:antialiased;line-height:1.6;
+  }
+
+  /* Hero */
+  .hero{
+    text-align:center;padding:100px 24px 64px;
+    position:relative;overflow:hidden;
+  }
+  .hero::before{
+    content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);
+    width:600px;height:600px;border-radius:50%;
+    background:radial-gradient(circle,rgba(124,58,237,.06) 0%,transparent 70%);
+    pointer-events:none;
+  }
+  .hero .badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--purple);background:var(--purple-bg);
+    padding:7px 16px;border-radius:100px;margin-bottom:24px;
+  }
+  .hero .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--purple);animation:blink 1.5s ease infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .hero h1{
+    font-size:clamp(36px,7vw,64px);font-weight:750;letter-spacing:-.025em;
+    line-height:1.1;margin-bottom:16px;
+  }
+  .hero h1 span{background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero .subtitle{
+    font-size:18px;color:var(--muted);max-width:520px;margin:0 auto 32px;
+  }
+  .hero .stats{
+    display:flex;gap:32px;justify-content:center;flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .hero .stat{text-align:center}
+  .hero .stat .num{font-size:28px;font-weight:700;letter-spacing:-.01em}
+  .hero .stat .label{font-size:13px;color:var(--muted);margin-top:2px}
+  .hero .stat:nth-child(1) .num{color:var(--blue)}
+  .hero .stat:nth-child(2) .num{color:var(--purple)}
+  .hero .stat:nth-child(3) .num{color:var(--green)}
+
+  /* Section titles */
+  .section-title{
+    text-align:center;padding:0 24px 40px;
+  }
+  .section-title h2{
+    font-size:28px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px;
+  }
+  .section-title p{color:var(--muted);font-size:15px}
+
+  /* Tool cards */
+  .tools{padding:0 24px 80px;max-width:1100px;margin:0 auto}
+  .tool-card{
+    display:flex;gap:40px;align-items:center;
+    background:var(--card);border-radius:24px;padding:48px 40px;
+    margin-bottom:24px;border:1px solid var(--border);
+    box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 40px rgba(0,0,0,.03);
+    transition:transform .25s ease,box-shadow .25s ease;
+    text-decoration:none;color:inherit;
+  }
+  .tool-card:hover{transform:translateY(-3px);box-shadow:0 12px 60px rgba(0,0,0,.06)}
+  .tool-card:last-child{margin-bottom:0}
+
+  .tool-card .icon-wrap{
+    width:100px;height:100px;border-radius:24px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:48px;
+  }
+  .tool-card:nth-child(1) .icon-wrap{background:var(--blue-bg)}
+  .tool-card:nth-child(2) .icon-wrap{background:var(--purple-bg)}
+  .tool-card:nth-child(3) .icon-wrap{background:var(--green-bg)}
+
+  .tool-card .info{flex:1;min-width:0}
+  .tool-card .info h3{font-size:22px;font-weight:650;margin-bottom:6px;letter-spacing:-.01em}
+  .tool-card .info .desc{font-size:15px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+  .tool-card .info .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tool-card .info .tags span{
+    font-size:11px;font-weight:500;padding:4px 10px;border-radius:100px;
+    background:#f5f5f5;color:var(--muted);
+  }
+
+  .tool-card .arrow{
+    font-size:24px;color:#d1d1d1;flex-shrink:0;
+    transition:transform .2s,color .2s;
+  }
+  .tool-card:hover .arrow{transform:translateX(4px);color:var(--text)}
+
+  /* Feature grid */
+  .features{
+    max-width:1100px;margin:0 auto;padding:0 24px 80px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;
+  }
+  .feature{
+    background:var(--card);border-radius:18px;padding:28px;
+    border:1px solid var(--border);
+    box-shadow:0 1px 3px rgba(0,0,0,.02);
+  }
+  .feature .icon{font-size:28px;margin-bottom:12px}
+  .feature h4{font-size:16px;font-weight:600;margin-bottom:4px}
+  .feature p{font-size:13px;color:var(--muted);line-height:1.5}
+
+  /* CTA / GitHub section */
+  .cta{
+    text-align:center;padding:0 24px 80px;
+  }
+  .cta .box{
+    display:inline-block;background:var(--card);border-radius:24px;
+    padding:48px 56px;border:1px solid var(--border);
+    box-shadow:0 1px 3px rgba(0,0,0,.03),0 8px 40px rgba(0,0,0,.03);
+    max-width:600px;width:100%;
+  }
+  .cta h2{font-size:24px;margin-bottom:8px}
+  .cta p{color:var(--muted);font-size:15px;margin-bottom:24px}
+  .cta code{
+    background:#f5f5f5;padding:10px 20px;border-radius:12px;
+    font-size:14px;word-break:break-all;display:inline-block;
+  }
+
+  .footer{
+    text-align:center;padding:0 24px 48px;
+    font-size:13px;color:#ccc;
+  }
+  .footer a{color:#aaa;text-decoration:none}
+  .footer a:hover{color:var(--text)}
+
+  @media(max-width:700px){
+    .hero{padding:60px 20px 40px}
+    .tool-card{flex-direction:column;gap:20px;padding:32px 24px;text-align:center}
+    .tool-card .icon-wrap{width:72px;height:72px;border-radius:18px;font-size:36px}
+    .tool-card .info .tags{justify-content:center}
+    .cta .box{padding:32px 24px}
+    .hero .stats{gap:20px}
+    .hero .stat .num{font-size:22px}
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="badge"><span class="dot"></span> 开源公益项目</div>
+  <h1>让技术<span>无障碍</span></h1>
+  <p class="subtitle">三个精心打磨的纯前端工具，为听障、阅读障碍、语言障碍群体提供免费、隐私安全的帮助。无需注册，无需网络，打开即用。</p>
+  <div class="stats">
+    <div class="stat"><div class="num">4.3亿+</div><div class="label">全球听障人群</div></div>
+    <div class="stat"><div class="num">10%</div><div class="label">人口有阅读障碍</div></div>
+    <div class="stat"><div class="num">0</div><div class="label">元 · 完全免费</div></div>
+  </div>
+</section>
+
+<!-- Tools -->
+<div class="section-title"><h2>三个工具</h2><p>每个都只需浏览器，不需要任何后端或注册</p></div>
+
+<div class="tools">
+  <a class="tool-card" href="speech-to-text.html">
+    <div class="icon-wrap">🎤</div>
+    <div class="info">
+      <h3>语音转文字大字幕</h3>
+      <p class="desc">实时将语音转为全屏大字显示。听障人士「看见」对方说的话，也适合嘈杂环境或老年人听力退化场景。支持 8 种语言、打字备选模式。</p>
+      <div class="tags"><span>听障人群</span><span>老年听力退化</span><span>嘈杂环境</span><span>Web Speech API</span></div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+
+  <a class="tool-card" href="reading-aid.html">
+    <div class="icon-wrap">📖</div>
+    <div class="info">
+      <h3>阅读障碍辅助</h3>
+      <p class="desc">阅读标尺 · 仿生阅读 · RSVP 逐词速读 · 行聚焦 · 颜色遮罩 · 专注模式。导入 EPUB/TXT 电子书，配合 OpenDyslexic 字体和 TTS 朗读，专为阅读障碍和 ADHD 设计。</p>
+      <div class="tags"><span>阅读障碍</span><span>ADHD</span><span>仿生阅读</span><span>速读</span><span>EPUB/TXT</span></div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+
+  <a class="tool-card" href="aac-board.html">
+    <div class="icon-wrap">💬</div>
+    <div class="info">
+      <h3>AAC 图片沟通板</h3>
+      <p class="desc">17 个分类、300+ 张内置卡片，点击即可让设备朗读。支持自定义卡片、快速打字输入、连续造句。帮助失语症、自闭症、渐冻症患者用最简单的方式「说话」。</p>
+      <div class="tags"><span>失语症</span><span>自闭症</span><span>渐冻症</span><span>脑瘫</span><span>中风康复</span></div>
+    </div>
+    <div class="arrow">→</div>
+  </a>
+</div>
+
+<!-- Features -->
+<div class="section-title"><h2>为什么值得信赖</h2><p>不只是功能堆砌，每个设计决策都有依据</p></div>
+
+<div class="features">
+  <div class="feature">
+    <div class="icon">🔒</div>
+    <h4>100% 隐私安全</h4>
+    <p>所有数据存储在浏览器本地，不上传任何服务器。你的语音、文本、阅读记录只有你自己能看到。</p>
+  </div>
+  <div class="feature">
+    <div class="icon">📡</div>
+    <h4>离线可用</h4>
+    <p>加载后无需网络连接。语音识别、TTS 朗读、所有功能均在本地执行。飞机上、地铁里都能用。</p>
+  </div>
+  <div class="feature">
+    <div class="icon">🧪</div>
+    <h4>有研究依据</h4>
+    <p>仿生阅读基于注视点引导理论，颜色遮罩针对 Meares-Irlen 综合征，阅读标尺减少视觉拥挤效应。每个功能背后都有论文支持。</p>
+  </div>
+  <div class="feature">
+    <div class="icon">🎨</div>
+    <h4>精心设计</h4>
+    <p>每个按钮大小、间距、颜色对比度都考虑到了精细动作困难用户。大触控区域、清晰反馈、减少误触。</p>
+  </div>
+  <div class="feature">
+    <div class="icon">🧩</div>
+    <h4>浏览器扩展</h4>
+    <p>附赠 Chrome 扩展版阅读辅助，安装后所有网页都能使用阅读标尺和特殊字体。一次安装，全网生效。</p>
+  </div>
+  <div class="feature">
+    <div class="icon">🌍</div>
+    <h4>多语言支持</h4>
+    <p>语音识别支持中英日韩法德西 + 粤语共 8 种语言。沟通板以中文为主，可自定义任何语言卡片。</p>
+  </div>
+</div>
+
+<!-- GitHub CTA -->
+<div class="cta">
+  <div class="box">
+    <h2>开源 & 自由使用</h2>
+    <p>MIT 协议开源。你可以自由使用、修改、分发。欢迎贡献代码或反馈建议。</p>
+    <code>git clone https://github.com/AmberTreelet/accessible-tools.git</code>
+  </div>
+</div>
+
+<div class="footer">
+  MIT License · 全部数据存储于本地 · 无需注册 · 无需网络 · <a href="reading-aid-extension/">浏览器扩展</a>
+</div>
+
+</body>
+</html>

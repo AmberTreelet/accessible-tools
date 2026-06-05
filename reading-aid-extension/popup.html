@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 280px; padding: 16px;
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 13px; color: #1a1a1a;
+    background: #fff;
+  }
+  h3 { font-size: 15px; margin-bottom: 14px; text-align: center; }
+
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+  }
+  .row:last-child { border-bottom: none; }
+
+  /* Toggle switch */
+  .switch {
+    position: relative; width: 44px; height: 26px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute; inset: 0; border-radius: 26px;
+    background: #d1d1d1; cursor: pointer; transition: .2s;
+  }
+  .switch .slider::before {
+    content: ''; position: absolute; left: 3px; top: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; transition: .2s;
+  }
+  .switch input:checked + .slider { background: #7c3aed; }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  .label { display: flex; align-items: center; gap: 6px; }
+
+  .overlay-dots { display: flex; gap: 6px; }
+  .overlay-dot {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid #e0e0e0; cursor: pointer; transition: .15s;
+    flex-shrink: 0;
+  }
+  .overlay-dot:hover { border-color: #999; }
+  .overlay-dot.active { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124,58,237,.2); }
+
+  .btn {
+    width: 100%; padding: 8px; border-radius: 8px;
+    border: 1px solid #e0e0e0; background: #f9f9f9;
+    font-size: 12px; cursor: pointer; margin-top: 6px;
+    transition: .15s; font-family: inherit;
+  }
+  .btn:hover { background: #f0f0f0; }
+  .btn.primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+  .btn.primary:hover { background: #6d28d9; }
+
+  .divider { height: 1px; background: #eee; margin: 10px 0; }
+
+  .footer { font-size: 11px; color: #aaa; text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h3>📖 阅读障碍辅助</h3>
+
+<div class="row">
+  <span class="label">📏 阅读标尺</span>
+  <label class="switch">
+    <input type="checkbox" id="rulerToggle">
+    <span class="slider"></span>
+  </label>
+</div>
+
+<div class="row">
+  <span class="label">🔤 特殊字体</span>
+  <label class="switch">
+    <input type="checkbox" id="dyslexicToggle">
+    <span class="slider"></span>
+  </label>
+</div>
+
+<div class="row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+  <span class="label">🎨 背景颜色</span>
+  <div class="overlay-dots">
+    <span class="overlay-dot active" style="background:#fff;" data-overlay="" title="原色"></span>
+    <span class="overlay-dot" style="background:#fdf6e3;" data-overlay="cream" title="暖米"></span>
+    <span class="overlay-dot" style="background:#fef2f2;" data-overlay="rose" title="淡玫"></span>
+    <span class="overlay-dot" style="background:#eff6ff;" data-overlay="blue" title="浅蓝"></span>
+    <span class="overlay-dot" style="background:#f0fdf4;" data-overlay="green" title="柔绿"></span>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<button class="btn primary" id="speakBtn">🔊 朗读选中文字</button>
+<button class="btn" id="stopBtn">⏹ 停止朗读</button>
+
+<div class="divider"></div>
+
+<div class="footer">数据不上传 · 纯本地运行 · MIT</div>
+
+<script>
+const tabId = chrome.devtools?.inspectedWindow?.tabId;
+
+function send(cmd, extra = {}) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { cmd, ...extra });
+  });
+}
+
+document.getElementById('rulerToggle').addEventListener('change', function() {
+  send('toggleRuler', { on: this.checked });
+});
+
+document.getElementById('dyslexicToggle').addEventListener('change', function() {
+  send('toggleDyslexic', { on: this.checked });
+});
+
+document.querySelectorAll('.overlay-dot').forEach(dot => {
+  dot.addEventListener('click', function() {
+    document.querySelectorAll('.overlay-dot').forEach(d => d.classList.remove('active'));
+    this.classList.add('active');
+    send('setOverlay', { overlay: this.dataset.overlay });
+  });
+});
+
+document.getElementById('speakBtn').addEventListener('click', () => send('speakSelection'));
+document.getElementById('stopBtn').addEventListener('click', () => send('stopSpeech'));
+
+// Load saved state
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  if (tabs[0]) {
+    chrome.tabs.sendMessage(tabs[0].id, { cmd: 'getState' }, (state) => {
+      if (chrome.runtime.lastError) return;
+      if (state) {
+        document.getElementById('rulerToggle').checked = state.rulerOn;
+        document.getElementById('dyslexicToggle').checked = state.dyslexicOn;
+        document.querySelectorAll('.overlay-dot').forEach(d => {
+          d.classList.toggle('active', d.dataset.overlay === state.overlayType);
+        });
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>

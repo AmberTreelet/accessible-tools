@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AAC 沟通板</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f7f4;
+    --card-bg: #fff;
+    --text: #1a1a1a;
+    --muted: #999;
+    --accent: #059669;
+    --accent-light: #ecfdf5;
+    --danger: #ef4444;
+    --border: #e8e5e0;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 10px rgba(0,0,0,.03);
+    --radius: 16px;
+  }
+  body {
+    font-family: -apple-system, "SF Pro Display", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh; display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; overflow: hidden;
+  }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; flex-shrink: 0; gap: 10px;
+  }
+  .back {
+    font-size: 15px; color: var(--muted); text-decoration: none;
+    white-space: nowrap; transition: color .2s;
+  }
+  .back:hover { color: var(--text); }
+  .topbar h2 { font-size: 17px; font-weight: 600; white-space: nowrap; }
+
+  /* Search */
+  .search-wrap {
+    flex: 1; max-width: 300px; position: relative;
+  }
+  .search-wrap input {
+    width: 100%; padding: 8px 14px 8px 34px; border-radius: 100px;
+    border: 1px solid var(--border); background: #fff;
+    font-size: 14px; outline: none; font-family: inherit;
+    transition: border .2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; color: var(--muted); pointer-events: none;
+  }
+  .add-btn {
+    background: var(--accent); color: #fff; border: none;
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    font-size: 20px; cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .add-btn:active { transform: scale(.92); }
+
+  /* Categories */
+  .tabs {
+    display: flex; gap: 6px; padding: 4px 16px 10px;
+    overflow-x: auto; flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0; padding: 7px 16px; border-radius: 100px;
+    border: 1px solid var(--border); background: #fff;
+    font-size: 13px; cursor: pointer; transition: all .15s;
+    font-family: inherit; color: var(--text);
+    white-space: nowrap;
+  }
+  .tab:active { transform: scale(.96); }
+  .tab.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  /* Grid */
+  .grid {
+    flex: 1; overflow-y: auto; padding: 2px 12px 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px; align-content: start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .card {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 14px 4px; gap: 5px;
+    cursor: pointer; transition: all .15s;
+    min-height: 90px; position: relative;
+  }
+  .card:active {
+    transform: scale(.94); background: var(--accent-light); border-color: var(--accent);
+  }
+  .card .emoji { font-size: 32px; line-height: 1; transition: transform .15s; }
+  .card:active .emoji { transform: scale(1.15); }
+  .card .label {
+    font-size: 13px; font-weight: 550; text-align: center;
+    line-height: 1.25; color: var(--text);
+  }
+  .card .delete-card {
+    position: absolute; top: 4px; right: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: none; background: #fee2e2; color: var(--danger);
+    font-size: 12px; cursor: pointer; display: none;
+    align-items: center; justify-content: center; line-height: 1;
+  }
+  .card.custom:hover .delete-card { display: flex; }
+  @media (hover: none) { .card.custom .delete-card { display: none !important; } }
+
+  /* No results */
+  .no-results {
+    grid-column: 1 / -1; text-align: center;
+    padding: 40px 20px; color: #ccc; font-size: 15px;
+  }
+
+  /* Sentence bar */
+  .sentence-bar {
+    flex-shrink: 0; background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex; gap: 8px; align-items: center;
+  }
+  .sentence-pills { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; min-height: 36px; align-items: center; }
+  .sentence-pills .empty { color: #ccc; font-size: 13px; }
+  .pill {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--accent-light); border: 1px solid var(--accent);
+    padding: 5px 10px; border-radius: 100px; font-size: 13px;
+    animation: popIn .2s ease;
+  }
+  @keyframes popIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .pill .x { cursor: pointer; color: var(--muted); font-size: 15px; line-height: 1; margin-left: 1px; }
+  .pill .x:active { color: var(--danger); }
+  .speak-all-btn {
+    flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+    border: none; background: var(--accent); color: #fff;
+    font-size: 20px; cursor: pointer; transition: all .15s;
+    box-shadow: 0 2px 10px rgba(5,150,105,.25);
+  }
+  .speak-all-btn:active { transform: scale(.92); }
+  .speak-all-btn:disabled { background: #ccc; box-shadow: none; cursor: default; }
+  .quick-input {
+    flex: 1; min-width: 100px; padding: 8px 14px; border-radius: 100px;
+    border: 1px solid var(--border); font-size: 14px; outline: none;
+    font-family: inherit; background: #f9f9f9;
+  }
+  .quick-input:focus { border-color: var(--accent); background: #fff; }
+  .quick-speak-btn {
+    flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--border); background: #fff; font-size: 16px;
+    cursor: pointer; transition: all .15s;
+  }
+  .quick-speak-btn:active { background: var(--accent-light); }
+  .speak-all-btn.playing { background: var(--danger); animation: pulse 1s ease infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+    50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+  }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .modal-bg.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: #fff; border-radius: 20px 20px 0 0;
+    padding: 28px 24px 36px; width: 100%; max-width: 480px;
+    transform: translateY(100%); transition: transform .3s ease;
+  }
+  .modal-bg.show .modal { transform: translateY(0); }
+  .modal h3 { font-size: 18px; margin-bottom: 20px; }
+  .modal input {
+    width: 100%; padding: 14px 16px; border-radius: 12px;
+    border: 1px solid var(--border); font-size: 16px;
+    margin-bottom: 12px; outline: none; font-family: inherit;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+  .modal .btn-row button {
+    flex: 1; padding: 14px; border-radius: 12px;
+    border: none; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .modal .btn-cancel { background: #f5f5f5; color: var(--text); }
+  .modal .btn-save { background: var(--accent); color: #fff; }
+
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(6, 1fr); } }
+  @media (min-width: 1200px) { .grid { grid-template-columns: repeat(8, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html" class="back">&larr; 返回</a>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索卡片..." oninput="doSearch()">
+  </div>
+  <button class="add-btn" onclick="showAddModal()">+</button>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="grid" id="grid"></div>
+
+<div class="sentence-bar">
+  <div class="sentence-pills" id="sentencePills">
+    <span class="empty">点击卡片组成句子</span>
+  </div>
+  <input type="text" class="quick-input" id="quickInput" placeholder="或直接输入自定义文字..." onkeydown="if(event.key==='Enter')speakQuick()">
+  <button class="quick-speak-btn" onclick="speakQuick()" title="朗读输入的文字">📢</button>
+  <button class="speak-all-btn" id="speakAllBtn" onclick="speakAll()" disabled>🔊</button>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="hideAddModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>添加自定义卡片</h3>
+    <input type="text" id="cardEmoji" placeholder="Emoji 图标，如 😊" maxlength="4">
+    <input type="text" id="cardLabel" placeholder="卡片文字，如 我很好" maxlength="20">
+    <input type="text" id="cardCategory" placeholder="分类名（留空归入'自定义'）" maxlength="8">
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="hideAddModal()">取消</button>
+      <button class="btn-save" onclick="addCustomCard()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const defaultCards = {
+  '日常': [
+    { emoji: '👍', label: '好的' },{ emoji: '👎', label: '不好' },{ emoji: '✋', label: '等一下' },
+    { emoji: '🙏', label: '谢谢' },{ emoji: '🙅', label: '不要' },{ emoji: '🫵', label: '你来' },
+    { emoji: '👤', label: '我自己来' },{ emoji: '🔄', label: '再来一次' },{ emoji: '🏁', label: '开始' },
+    { emoji: '⏹️', label: '停止' },{ emoji: '⏰', label: '几点了' },{ emoji: '📅', label: '今天几号' },
+    { emoji: '🌅', label: '早上好' },{ emoji: '☀️', label: '下午好' },{ emoji: '🌙', label: '晚安' },
+    { emoji: '😴', label: '想休息' },{ emoji: '🚿', label: '想洗澡' },{ emoji: '🪥', label: '刷牙' },
+    { emoji: '🧴', label: '涂润肤露' },{ emoji: '🪞', label: '照镜子' },{ emoji: '💇', label: '想理发' },
+    { emoji: '💅', label: '剪指甲' },{ emoji: '🧹', label: '打扫卫生' },{ emoji: '🗑️', label: '扔垃圾' },
+    { emoji: '🪴', label: '浇花' },{ emoji: '🐶', label: '看宠物' },{ emoji: '📺', label: '看电视' },
+    { emoji: '🎵', label: '听音乐' },{ emoji: '📖', label: '看书' },{ emoji: '🎮', label: '玩游戏' },
+    { emoji: '🧩', label: '玩拼图' },{ emoji: '✏️', label: '写字画画' },{ emoji: '📱', label: '给手机充电' },
+    { emoji: '💻', label: '用电脑' },{ emoji: '📞', label: '打电话' },{ emoji: '🔑', label: '钥匙在哪' },
+  ],
+  '吃喝': [
+    { emoji: '🥤', label: '要喝水' },{ emoji: '🧊', label: '喝冰水' },{ emoji: '☕', label: '喝热水' },
+    { emoji: '🍵', label: '喝茶' },{ emoji: '🥛', label: '喝牛奶' },{ emoji: '🧃', label: '喝果汁' },
+    { emoji: '🥤', label: '喝饮料' },{ emoji: '🍺', label: '喝啤酒' },{ emoji: '🍷', label: '喝红酒' },
+    { emoji: '🍜', label: '我饿了' },{ emoji: '🍚', label: '米饭' },{ emoji: '🍞', label: '面包' },
+    { emoji: '🍜', label: '面条' },{ emoji: '🥟', label: '饺子' },{ emoji: '🥟', label: '包子' },
+    { emoji: '🥚', label: '鸡蛋' },{ emoji: '🧀', label: '奶酪' },{ emoji: '🥩', label: '肉' },
+    { emoji: '🍗', label: '鸡肉' },{ emoji: '🐟', label: '鱼' },{ emoji: '🦐', label: '虾' },
+    { emoji: '🥬', label: '蔬菜' },{ emoji: '🥔', label: '土豆' },{ emoji: '🍅', label: '番茄' },
+    { emoji: '🍎', label: '苹果' },{ emoji: '🍌', label: '香蕉' },{ emoji: '🍊', label: '橙子' },
+    { emoji: '🍇', label: '葡萄' },{ emoji: '🍉', label: '西瓜' },{ emoji: '🍓', label: '草莓' },
+    { emoji: '🍪', label: '饼干' },{ emoji: '🍬', label: '糖' },{ emoji: '🍰', label: '蛋糕' },
+    { emoji: '🍦', label: '冰淇淋' },{ emoji: '🍫', label: '巧克力' },{ emoji: '🥜', label: '坚果' },
+    { emoji: '🥄', label: '要勺子' },{ emoji: '🥢', label: '要筷子' },{ emoji: '🍴', label: '要叉子' },
+    { emoji: '🍽️', label: '吃饱了' },{ emoji: '🤤', label: '还想吃' },{ emoji: '😋', label: '很好吃' },
+    { emoji: '🤢', label: '不好吃' },{ emoji: '🌶️', label: '太辣了' },{ emoji: '🧂', label: '太咸了' },
+    { emoji: '🍬', label: '太甜了' },{ emoji: '🥵', label: '太烫了' },{ emoji: '🧊', label: '太凉了' },
+    { emoji: '💊', label: '要吃药' },
+  ],
+  '感受': [
+    { emoji: '😊', label: '我很好' },{ emoji: '😄', label: '很开心' },{ emoji: '😆', label: '太好玩了' },
+    { emoji: '😢', label: '难过' },{ emoji: '😭', label: '想哭' },{ emoji: '😠', label: '生气' },
+    { emoji: '😤', label: '很不爽' },{ emoji: '😡', label: '非常愤怒' },{ emoji: '😰', label: '紧张' },
+    { emoji: '😨', label: '害怕' },{ emoji: '😱', label: '吓到了' },{ emoji: '😳', label: '尴尬' },
+    { emoji: '😔', label: '失望' },{ emoji: '😞', label: '很累' },{ emoji: '😴', label: '困了' },
+    { emoji: '😵', label: '头晕' },{ emoji: '😵‍💫', label: '迷糊' },{ emoji: '😣', label: '这里很疼' },
+    { emoji: '😐', label: '没感觉' },{ emoji: '🤔', label: '不确定' },{ emoji: '😕', label: '困惑' },
+    { emoji: '😮', label: '惊讶' },{ emoji: '🥰', label: '很温暖' },{ emoji: '😌', label: '很放松' },
+    { emoji: '😒', label: '无聊' },{ emoji: '😩', label: '受不了了' },{ emoji: '💔', label: '很伤心' },
+    { emoji: '😤', label: '沮丧' },{ emoji: '😟', label: '担心' },{ emoji: '😬', label: '不舒服' },
+    { emoji: '🥺', label: '委屈' },{ emoji: '😌', label: '安心了' },{ emoji: '🤗', label: '很感激' },
+    { emoji: '😎', label: '很自信' },{ emoji: '😖', label: '很烦躁' },{ emoji: '❤️', label: '我爱你' },
+    { emoji: '🫂', label: '想抱抱' },{ emoji: '💋', label: '亲亲' },{ emoji: '👍', label: '满意' },
+    { emoji: '👎', label: '不满意' },
+  ],
+  '医疗': [
+    { emoji: '🤒', label: '不舒服' },{ emoji: '🤕', label: '头疼' },{ emoji: '😵‍💫', label: '头晕' },
+    { emoji: '🦷', label: '牙疼' },{ emoji: '🦴', label: '骨头疼' },{ emoji: '💪', label: '肌肉疼' },
+    { emoji: '🫄', label: '肚子疼' },{ emoji: '🤢', label: '恶心想吐' },{ emoji: '🤮', label: '吐了' },
+    { emoji: '🥴', label: '眩晕' },{ emoji: '🫁', label: '呼吸困难' },{ emoji: '🫀', label: '心跳快' },
+    { emoji: '🤧', label: '感冒了' },{ emoji: '🤒', label: '发烧了' },{ emoji: '😮‍💨', label: '喘不上气' },
+    { emoji: '🩸', label: '出血了' },{ emoji: '🩹', label: '需要包扎' },{ emoji: '🩺', label: '需要医生' },
+    { emoji: '💉', label: '要打针吗' },{ emoji: '💊', label: '该吃药了' },{ emoji: '💊', label: '需要止痛药' },
+    { emoji: '🏥', label: '去医院' },{ emoji: '🚑', label: '叫救护车' },{ emoji: '🆘', label: '紧急求助' },
+    { emoji: '🧑‍⚕️', label: '叫护士' },{ emoji: '🧪', label: '需要化验' },{ emoji: '🩻', label: '拍片子' },
+    { emoji: '😷', label: '请戴口罩' },{ emoji: '🧼', label: '请洗手' },{ emoji: '🧘', label: '请扶我' },
+    { emoji: '🦽', label: '需要轮椅' },{ emoji: '🦯', label: '需要盲杖' },{ emoji: '🦻', label: '助听器没电了' },
+    { emoji: '👁️', label: '眼睛不舒服' },{ emoji: '👂', label: '耳朵不舒服' },{ emoji: '🦶', label: '脚疼' },
+    { emoji: '🖐️', label: '手疼' },{ emoji: '🦵', label: '腿疼' },{ emoji: '💤', label: '失眠了' },
+    { emoji: '🚬', label: '想抽烟' },{ emoji: '🍷', label: '想喝酒' },
+  ],
+  '身体': [
+    { emoji: '🧠', label: '头' },{ emoji: '👁️', label: '眼睛' },{ emoji: '👂', label: '耳朵' },
+    { emoji: '👃', label: '鼻子' },{ emoji: '👄', label: '嘴巴' },{ emoji: '🦷', label: '牙齿' },
+    { emoji: '👅', label: '舌头' },{ emoji: '🫁', label: '喉咙' },{ emoji: '💪', label: '胳膊' },
+    { emoji: '🖐️', label: '手' },{ emoji: '👆', label: '手指' },{ emoji: '💅', label: '指甲' },
+    { emoji: '🦵', label: '腿' },{ emoji: '🦶', label: '脚' },{ emoji: '🦶', label: '脚趾' },
+    { emoji: '🦴', label: '骨头' },{ emoji: '💪', label: '肌肉' },{ emoji: '🫄', label: '肚子' },
+    { emoji: '🫀', label: '心脏' },{ emoji: '🫁', label: '肺' },{ emoji: '🧠', label: '大脑' },
+    { emoji: '🩸', label: '出血' },{ emoji: '🩹', label: '伤口' },{ emoji: '🩺', label: '体检' },
+    { emoji: '🤒', label: '发烧' },{ emoji: '🤧', label: '流鼻涕' },{ emoji: '😮‍💨', label: '呼吸' },
+  ],
+  '医疗更细': [
+    { emoji: '1️⃣', label: '疼痛等级1' },{ emoji: '3️⃣', label: '疼痛等级3' },{ emoji: '5️⃣', label: '疼痛等级5' },
+    { emoji: '7️⃣', label: '疼痛等级7' },{ emoji: '🔟', label: '疼痛等级10' },{ emoji: '📍', label: '这里疼' },
+    { emoji: '🔪', label: '刺痛' },{ emoji: '🔨', label: '钝痛' },{ emoji: '⚡', label: '电击样痛' },
+    { emoji: '🔥', label: '烧灼痛' },{ emoji: '🌊', label: '一阵一阵痛' },{ emoji: '🔒', label: '持续痛' },
+    { emoji: '💊', label: '吃药时间到了' },{ emoji: '🧴', label: '需要涂药' },{ emoji: '🩹', label: '换纱布' },
+    { emoji: '🩺', label: '量血压' },{ emoji: '🌡️', label: '量体温' },{ emoji: '🩸', label: '测血糖' },
+    { emoji: '💉', label: '打胰岛素' },{ emoji: '🫁', label: '吸氧' },{ emoji: '🩻', label: '做CT' },
+    { emoji: '🧲', label: '做核磁' },{ emoji: '💊', label: '吃药' },{ emoji: '💉', label: '打针' },
+    { emoji: '💧', label: '输液' },{ emoji: '🩸', label: '抽血' },{ emoji: '🧪', label: '验尿' },
+  ],
+  '需求': [
+    { emoji: '🚽', label: '上厕所' },{ emoji: '🚻', label: '厕所在哪' },{ emoji: '🧻', label: '需要纸巾' },
+    { emoji: '🧷', label: '需要尿布' },{ emoji: '🩲', label: '换内衣' },{ emoji: '🛏️', label: '想躺下' },
+    { emoji: '🪑', label: '想坐下' },{ emoji: '🪜', label: '想站起来' },{ emoji: '🚶', label: '想走走' },
+    { emoji: '🧑‍🦯', label: '请引导我' },{ emoji: '🦼', label: '推轮椅' },{ emoji: '🛗', label: '坐电梯' },
+    { emoji: '🪜', label: '上楼梯' },{ emoji: '🌡️', label: '太冷了' },{ emoji: '🥵', label: '太热了' },
+    { emoji: '🌬️', label: '有风' },{ emoji: '💡', label: '开灯' },{ emoji: '🌑', label: '关灯' },
+    { emoji: '🪟', label: '开窗' },{ emoji: '🚪', label: '关门' },{ emoji: '🔇', label: '请安静' },
+    { emoji: '🔊', label: '大点声' },{ emoji: '🕶️', label: '太亮了' },{ emoji: '🌙', label: '太暗了' },
+    { emoji: '🎒', label: '帮我拿包' },{ emoji: '👓', label: '帮我拿眼镜' },{ emoji: '👪', label: '想见家人' },
+    { emoji: '🤝', label: '需要帮助' },{ emoji: '🙋', label: '有人在吗' },{ emoji: '🔔', label: '按铃呼叫' },
+    { emoji: '🛎️', label: '按呼叫铃' },{ emoji: '📱', label: '帮我充电' },{ emoji: '💰', label: '需要钱' },
+    { emoji: '🔌', label: '插电源' },{ emoji: '🔋', label: '换电池' },
+  ],
+  '社交': [
+    { emoji: '👋', label: '你好' },{ emoji: '🙂', label: '很高兴见到你' },{ emoji: '👋', label: '再见' },
+    { emoji: '🤝', label: '认识你很高兴' },{ emoji: '🙏', label: '请' },{ emoji: '🙏', label: '谢谢' },
+    { emoji: '😊', label: '不客气' },{ emoji: '🙇', label: '对不起' },{ emoji: '😊', label: '没关系' },
+    { emoji: '👏', label: '太棒了' },{ emoji: '💪', label: '加油' },{ emoji: '🎉', label: '祝贺你' },
+    { emoji: '🤔', label: '我不明白' },{ emoji: '🔁', label: '请再说一遍' },{ emoji: '🐢', label: '说慢一点' },
+    { emoji: '🔊', label: '大声一点' },{ emoji: '✍️', label: '请写下来' },{ emoji: '🖼️', label: '请画出来' },
+    { emoji: '👉', label: '指给我看' },{ emoji: '📱', label: '打字给我看' },{ emoji: '🌍', label: '用翻译软件' },
+    { emoji: '👆', label: '选这个' },{ emoji: '👆', label: '我想要这个' },{ emoji: '📍', label: '这是哪里' },
+    { emoji: '🗺️', label: '怎么走' },{ emoji: '📞', label: '打电话给' },{ emoji: '💬', label: '发短信给' },
+    { emoji: '📹', label: '视频通话' },{ emoji: '📷', label: '拍照片' },{ emoji: '📹', label: '录视频' },
+    { emoji: '👨‍👩‍👧‍👦', label: '这是我家人' },{ emoji: '🧑‍🤝‍🧑', label: '这是我朋友' },{ emoji: '🏠', label: '我家在' },
+    { emoji: '📧', label: '发邮件' },{ emoji: '📝', label: '帮我填表' },{ emoji: '🖊️', label: '帮我签名' },
+  ],
+  '场所': [
+    { emoji: '🏠', label: '家' },{ emoji: '🏥', label: '医院' },{ emoji: '🏪', label: '超市' },
+    { emoji: '🏫', label: '学校' },{ emoji: '🏢', label: '公司' },{ emoji: '⛪', label: '教堂' },
+    { emoji: '🛒', label: '商场' },{ emoji: '🍽️', label: '餐厅' },{ emoji: '☕', label: '咖啡厅' },
+    { emoji: '🏦', label: '银行' },{ emoji: '🏣', label: '邮局' },{ emoji: '💈', label: '理发店' },
+    { emoji: '🏞️', label: '公园' },{ emoji: '🎬', label: '电影院' },{ emoji: '🏊', label: '游泳池' },
+    { emoji: '🏋️', label: '健身房' },{ emoji: '📚', label: '图书馆' },{ emoji: '🎭', label: '剧院' },
+    { emoji: '🏟️', label: '体育馆' },{ emoji: '✈️', label: '机场' },{ emoji: '🚉', label: '火车站' },
+    { emoji: '🚌', label: '公交站' },{ emoji: '🚇', label: '地铁站' },{ emoji: '⛽', label: '加油站' },
+    { emoji: '🏨', label: '酒店' },{ emoji: '🏖️', label: '海滩' },{ emoji: '⛰️', label: '山上' },
+    { emoji: '🌳', label: '户外' },{ emoji: '🚗', label: '车里' },
+  ],
+  '时间': [
+    { emoji: '🌅', label: '早上' },{ emoji: '☀️', label: '上午' },{ emoji: '🌤️', label: '中午' },
+    { emoji: '🌤️', label: '下午' },{ emoji: '🌅', label: '傍晚' },{ emoji: '🌙', label: '晚上' },
+    { emoji: '🌃', label: '深夜' },{ emoji: '🕐', label: '1点' },{ emoji: '🕑', label: '2点' },
+    { emoji: '🕒', label: '3点' },{ emoji: '🕓', label: '4点' },{ emoji: '🕔', label: '5点' },
+    { emoji: '🕕', label: '6点' },{ emoji: '🕖', label: '7点' },{ emoji: '🕗', label: '8点' },
+    { emoji: '🕘', label: '9点' },{ emoji: '🕙', label: '10点' },{ emoji: '🕚', label: '11点' },
+    { emoji: '🕛', label: '12点' },{ emoji: '⏰', label: '现在' },{ emoji: '📅', label: '今天' },
+    { emoji: '📅', label: '明天' },{ emoji: '📅', label: '昨天' },{ emoji: '📅', label: '后天' },
+    { emoji: '📅', label: '前天' },{ emoji: '📆', label: '本周' },{ emoji: '📆', label: '下周' },
+    { emoji: '📆', label: '上周' },{ emoji: '🗓️', label: '这个月' },{ emoji: '📅', label: '几号' },
+    { emoji: '⏰', label: '几点了' },{ emoji: '⏱️', label: '等多久' },{ emoji: '⌛', label: '还要等多久' },
+    { emoji: '⏳', label: '请等一等' },{ emoji: '🕐', label: '马上' },{ emoji: '🕐', label: '一会儿' },
+    { emoji: '🕐', label: '很快' },
+  ],
+  '天气': [
+    { emoji: '☀️', label: '晴天' },{ emoji: '⛅', label: '多云' },{ emoji: '☁️', label: '阴天' },
+    { emoji: '🌧️', label: '下雨' },{ emoji: '⛈️', label: '雷阵雨' },{ emoji: '🌨️', label: '下雪' },
+    { emoji: '🌬️', label: '刮风' },{ emoji: '🌫️', label: '有雾' },{ emoji: '🌈', label: '彩虹' },
+    { emoji: '🥵', label: '很热' },{ emoji: '🥶', label: '很冷' },{ emoji: '😰', label: '很闷' },
+    { emoji: '💧', label: '潮湿' },{ emoji: '🏜️', label: '干燥' },{ emoji: '🌡️', label: '多少度' },
+  ],
+  '衣物': [
+    { emoji: '👕', label: 'T恤' },{ emoji: '👔', label: '衬衫' },{ emoji: '🧥', label: '外套' },
+    { emoji: '🧥', label: '夹克' },{ emoji: '🧣', label: '围巾' },{ emoji: '🧤', label: '手套' },
+    { emoji: '🧦', label: '袜子' },{ emoji: '👖', label: '裤子' },{ emoji: '👗', label: '裙子' },
+    { emoji: '🩳', label: '短裤' },{ emoji: '👟', label: '运动鞋' },{ emoji: '👞', label: '皮鞋' },
+    { emoji: '🩴', label: '拖鞋' },{ emoji: '👒', label: '帽子' },{ emoji: '🧢', label: '棒球帽' },
+    { emoji: '🕶️', label: '墨镜' },{ emoji: '👓', label: '眼镜' },{ emoji: '🎒', label: '背包' },
+    { emoji: '🩲', label: '内衣' },{ emoji: '👘', label: '睡衣' },{ emoji: '🧥', label: '毛衣' },
+    { emoji: '🌂', label: '雨伞' },{ emoji: '🧥', label: '雨衣' },{ emoji: '👢', label: '靴子' },
+    { emoji: '🩱', label: '泳衣' },
+  ],
+  '出行': [
+    { emoji: '🚗', label: '坐汽车' },{ emoji: '🚌', label: '坐公交' },{ emoji: '🚇', label: '坐地铁' },
+    { emoji: '🚕', label: '打车' },{ emoji: '🚲', label: '骑自行车' },{ emoji: '🛵', label: '骑电动车' },
+    { emoji: '✈️', label: '坐飞机' },{ emoji: '🚄', label: '坐高铁' },{ emoji: '🚂', label: '坐火车' },
+    { emoji: '🚢', label: '坐船' },{ emoji: '🚶', label: '步行' },{ emoji: '🦼', label: '电动轮椅' },
+    { emoji: '🦽', label: '手动轮椅' },{ emoji: '🛗', label: '电梯' },{ emoji: '🅿️', label: '停车场' },
+    { emoji: '🚦', label: '红绿灯' },{ emoji: '🚏', label: '车站' },{ emoji: '⛽', label: '加油站' },
+    { emoji: '🎫', label: '买车票' },{ emoji: '🗺️', label: '看地图' },{ emoji: '📍', label: '定位' },
+    { emoji: '🧳', label: '行李' },{ emoji: '🪪', label: '身份证' },{ emoji: '🎫', label: '车票' },
+  ],
+  '娱乐': [
+    { emoji: '📺', label: '看电视' },{ emoji: '🎬', label: '看电影' },{ emoji: '🎵', label: '听音乐' },
+    { emoji: '📻', label: '听广播' },{ emoji: '📖', label: '读书' },{ emoji: '📰', label: '看报纸' },
+    { emoji: '🎮', label: '玩游戏' },{ emoji: '♟️', label: '下棋' },{ emoji: '🃏', label: '打牌' },
+    { emoji: '🧩', label: '拼图' },{ emoji: '🎨', label: '画画' },{ emoji: '✂️', label: '做手工' },
+    { emoji: '🧶', label: '织毛衣' },{ emoji: '🌱', label: '种花' },{ emoji: '📷', label: '拍照' },
+    { emoji: '✍️', label: '写日记' },{ emoji: '🎤', label: '唱歌' },{ emoji: '💃', label: '跳舞' },
+    { emoji: '🏊', label: '游泳' },{ emoji: '🚶', label: '散步' },{ emoji: '🧘', label: '做瑜伽' },
+    { emoji: '🏀', label: '打篮球' },{ emoji: '⚽', label: '踢足球' },{ emoji: '🏓', label: '打乒乓' },
+    { emoji: '🎱', label: '打台球' },{ emoji: '🎣', label: '钓鱼' },{ emoji: '⛳', label: '打高尔夫' },
+    { emoji: '🐕', label: '遛狗' },{ emoji: '📱', label: '刷手机' },{ emoji: '💻', label: '上网' },
+  ],
+  '工作学习': [
+    { emoji: '💻', label: '用电脑' },{ emoji: '📱', label: '用手机' },{ emoji: '🖨️', label: '打印' },
+    { emoji: '📄', label: '文件' },{ emoji: '📧', label: '发邮件' },{ emoji: '📝', label: '做笔记' },
+    { emoji: '📚', label: '读书' },{ emoji: '✏️', label: '写作业' },{ emoji: '📐', label: '数学' },
+    { emoji: '🔬', label: '科学' },{ emoji: '🎨', label: '艺术' },{ emoji: '🎵', label: '音乐课' },
+    { emoji: '🏫', label: '去上学' },{ emoji: '🎓', label: '毕业' },{ emoji: '📋', label: '考试' },
+    { emoji: '💼', label: '去上班' },{ emoji: '📊', label: '开会' },{ emoji: '📅', label: '日程' },
+    { emoji: '⏰', label: '准时' },{ emoji: '📌', label: '重要' },{ emoji: '✅', label: '完成了' },
+    { emoji: '❌', label: '没完成' },{ emoji: '🔄', label: '重做' },
+  ],
+  '数字': [
+    { emoji: '0️⃣', label: '零' },{ emoji: '1️⃣', label: '一' },{ emoji: '2️⃣', label: '二' },
+    { emoji: '3️⃣', label: '三' },{ emoji: '4️⃣', label: '四' },{ emoji: '5️⃣', label: '五' },
+    { emoji: '6️⃣', label: '六' },{ emoji: '7️⃣', label: '七' },{ emoji: '8️⃣', label: '八' },
+    { emoji: '9️⃣', label: '九' },{ emoji: '🔟', label: '十' },{ emoji: '💯', label: '一百' },
+    { emoji: '🔢', label: '很多' },{ emoji: '1️⃣', label: '一点点' },{ emoji: '½', label: '一半' },
+    { emoji: '➕', label: '更多' },{ emoji: '➖', label: '更少' },{ emoji: '🟰', label: '一样多' },
+    { emoji: '📏', label: '多长' },{ emoji: '⚖️', label: '多重' },{ emoji: '💰', label: '多少钱' },
+  ],
+};
+
+let customCards = {};
+try { customCards = JSON.parse(localStorage.getItem('aac_custom_cards')) || {}; } catch(e) {}
+
+function getCategories() {
+  const cats = Object.keys(defaultCards);
+  const extras = Object.keys(customCards).filter(c => !cats.includes(c));
+  return [...cats, ...extras];
+}
+
+let currentCategory = '日常';
+let sentence = [];
+let searchMode = false;
+let searchResults = [];
+
+function renderTabs() {
+  if (searchMode) return;
+  document.getElementById('tabs').innerHTML = getCategories().map(c =>
+    `<button class="tab${c === currentCategory ? ' active' : ''}" onclick="switchCategory('${c}')">${c}</button>`
+  ).join('');
+}
+
+function switchCategory(cat) {
+  searchMode = false;
+  currentCategory = cat;
+  document.getElementById('searchInput').value = '';
+  renderTabs();
+  renderGrid();
+}
+
+function getCardsFor(cat) {
+  const builtin = defaultCards[cat] || [];
+  const extras = customCards[cat] || [];
+  return [...builtin, ...extras];
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) { searchMode = false; renderTabs(); renderGrid(); return; }
+  searchMode = true;
+  document.getElementById('tabs').innerHTML = '<span style="font-size:13px;color:var(--muted);padding:7px 0;">搜索结果</span>';
+  searchResults = [];
+  for (const cat of getCategories()) {
+    for (const card of getCardsFor(cat)) {
+      if (card.label.toLowerCase().includes(q)) searchResults.push(card);
+    }
+  }
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  let cards;
+  if (searchMode) {
+    cards = searchResults;
+  } else {
+    cards = getCardsFor(currentCategory);
+  }
+
+  if (!cards.length) {
+    grid.innerHTML = '<div class="no-results">没有找到匹配的卡片<br><span style="font-size:12px;">试试其他关键词，或点击 + 添加自定义卡片</span></div>';
+    return;
+  }
+
+  grid.innerHTML = cards.map((c, i) => {
+    const isCustom = !searchMode && customCards[currentCategory] && i >= (defaultCards[currentCategory]||[]).length;
+    const cat = searchMode ? '' : currentCategory;
+    const idx = searchMode ? -1 : i - (defaultCards[currentCategory]||[]).length;
+    return `
+      <div class="card${isCustom ? ' custom' : ''}" onclick="tapCard('${c.label.replace(/'/g, "\\'")}')">
+        ${isCustom ? `<button class="delete-card" onclick="event.stopPropagation();deleteCard('${cat}',${idx})">×</button>` : ''}
+        <span class="emoji">${c.emoji}</span>
+        <span class="label">${c.label}</span>
+      </div>`;
+  }).join('');
+}
+
+function tapCard(label) {
+  sentence.push(label);
+  renderSentence();
+  speak(label);
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function speak(text) {
+  speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'zh-CN'; utt.rate = 0.85;
+  utt.onstart = () => document.getElementById('speakAllBtn').classList.add('playing');
+  utt.onend = () => document.getElementById('speakAllBtn').classList.remove('playing');
+  speechSynthesis.speak(utt);
+}
+
+function speakAll() {
+  if (!sentence.length) return;
+  speak(sentence.join('，'));
+}
+
+function removeFromSentence(idx) { sentence.splice(idx, 1); renderSentence(); }
+
+function renderSentence() {
+  const container = document.getElementById('sentencePills');
+  const btn = document.getElementById('speakAllBtn');
+  if (!sentence.length) {
+    container.innerHTML = '<span class="empty">点击卡片组成句子</span>';
+    btn.disabled = true;
+  } else {
+    container.innerHTML = sentence.map((t, i) =>
+      `<span class="pill">${t}<span class="x" onclick="removeFromSentence(${i})">×</span></span>`
+    ).join('');
+    btn.disabled = false;
+  }
+}
+
+function showAddModal() {
+  document.getElementById('modalBg').classList.add('show');
+  document.getElementById('cardEmoji').focus();
+}
+
+function hideAddModal(e) {
+  if (e && e.target !== document.getElementById('modalBg')) return;
+  document.getElementById('modalBg').classList.remove('show');
+  document.getElementById('cardEmoji').value = '';
+  document.getElementById('cardLabel').value = '';
+  document.getElementById('cardCategory').value = '';
+}
+
+function addCustomCard() {
+  const emoji = document.getElementById('cardEmoji').value.trim();
+  const label = document.getElementById('cardLabel').value.trim();
+  let category = document.getElementById('cardCategory').value.trim();
+  if (!emoji || !label) { alert('请填写 Emoji 和文字'); return; }
+  if (!category) category = '自定义';
+  if (!customCards[category]) customCards[category] = [];
+  customCards[category].push({ emoji, label });
+  localStorage.setItem('aac_custom_cards', JSON.stringify(customCards));
+  hideAddModal();
+  currentCategory = category;
+  searchMode = false;
+  document.getElementById('searchInput').value = '';
+  renderTabs();
+  renderGrid();
+}
+
+function deleteCard(cat, idx) {
+  customCards[cat].splice(idx, 1);
+  if (!customCards[cat].length) delete customCards[cat];
+  localStorage.setItem('aac_custom_cards', JSON.stringify(customCards));
+  if (!getCardsFor(currentCategory).length) { currentCategory = '日常'; renderTabs(); }
+  renderGrid();
+}
+
+renderTabs();
+renderGrid();
+
+function speakQuick() {
+  const text = document.getElementById('quickInput').value.trim();
+  if (!text) return;
+  speak(text);
+  sentence.push(text);
+  renderSentence();
+  document.getElementById('quickInput').value = '';
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+</script>
+</body>
+</html>
